@@ -20,6 +20,7 @@ import type {
 } from "../types";
 
 interface PointerActions {
+  commitDocumentChange: () => void;
   render: () => void;
   openTextInput: (point: GridPoint) => void;
   clearSelection: () => void;
@@ -56,6 +57,7 @@ export function attachPointerController(
   actions: PointerActions
 ): void {
   const interaction = dom.interactionLayer;
+  let strokeMutated = false;
 
   function updateCursorCell(clientX: number, clientY: number): GridPoint {
     const nextCell = screenToCell(
@@ -105,6 +107,7 @@ export function attachPointerController(
   }
 
   function beginDraw(event: PointerEvent, point: GridPoint): void {
+    strokeMutated = false;
     state.interaction.dragStartCell = point;
     state.interaction.currentCell = point;
     state.interaction.lastStrokeCell = point;
@@ -114,6 +117,7 @@ export function attachPointerController(
     if (state.tool === "freehand") {
       pushHistorySnapshot(state.history, state.grid);
       drawFreehandCell(state.grid, point, state.toolOptions.freehandGlyph);
+      strokeMutated = true;
       setCursorHighlight(state, 1);
       return;
     }
@@ -121,6 +125,7 @@ export function attachPointerController(
     if (state.tool === "eraser") {
       pushHistorySnapshot(state.history, state.grid);
       eraseArea(state.grid, point, state.toolOptions.eraserSize);
+      strokeMutated = true;
       setCursorHighlight(state, state.toolOptions.eraserSize);
       return;
     }
@@ -197,6 +202,7 @@ export function attachPointerController(
     state.selection.movingOrigin = null;
     state.ui.overlay.moveRect = null;
     clearPreviewState(state);
+    strokeMutated = false;
   }
 
   interaction.addEventListener("pointerdown", (event) => {
@@ -284,6 +290,7 @@ export function attachPointerController(
         if (!lastCell || lastCell.col !== point.col || lastCell.row !== point.row) {
           drawFreehandCell(state.grid, point, state.toolOptions.freehandGlyph);
           state.interaction.lastStrokeCell = point;
+          strokeMutated = true;
         }
         setCursorHighlight(state, 1);
         actions.render();
@@ -295,6 +302,7 @@ export function attachPointerController(
         if (!lastCell || lastCell.col !== point.col || lastCell.row !== point.row) {
           eraseArea(state.grid, point, state.toolOptions.eraserSize);
           state.interaction.lastStrokeCell = point;
+          strokeMutated = true;
         }
         setCursorHighlight(state, state.toolOptions.eraserSize);
         actions.render();
@@ -337,6 +345,7 @@ export function attachPointerController(
       if (rect.right - rect.left >= 1 && rect.bottom - rect.top >= 1) {
         pushHistorySnapshot(state.history, state.grid);
         drawRectangle(state.grid, start, current, state.toolOptions.borderStyle);
+        actions.commitDocumentChange();
       }
       return;
     }
@@ -346,6 +355,7 @@ export function attachPointerController(
       if (rect.right - rect.left >= 2 && rect.bottom - rect.top >= 2) {
         pushHistorySnapshot(state.history, state.grid);
         drawDiamond(state.grid, start, current, state.toolOptions.diamondStyle);
+        actions.commitDocumentChange();
       }
       return;
     }
@@ -353,6 +363,7 @@ export function attachPointerController(
     if (state.tool === "line") {
       pushHistorySnapshot(state.history, state.grid);
       drawLine(state.grid, start, current, state.toolOptions.lineStyle);
+      actions.commitDocumentChange();
       return;
     }
 
@@ -365,6 +376,7 @@ export function attachPointerController(
         state.toolOptions.lineStyle,
         state.toolOptions.arrowHead
       );
+      actions.commitDocumentChange();
       return;
     }
 
@@ -386,12 +398,17 @@ export function attachPointerController(
       const movingOrigin = state.selection.movingOrigin;
       const movingCells = state.selection.movingCells;
       if (movingOrigin && movingCells) {
+        const deltaCol = point.col - movingOrigin.col;
+        const deltaRow = point.row - movingOrigin.row;
         stampMovedSelection(
           state.grid,
           movingCells,
-          point.col - movingOrigin.col,
-          point.row - movingOrigin.row
+          deltaCol,
+          deltaRow
         );
+        if (deltaCol !== 0 || deltaRow !== 0) {
+          actions.commitDocumentChange();
+        }
       }
       endInteraction(false);
       actions.render();
@@ -401,6 +418,12 @@ export function attachPointerController(
     if (state.interaction.mode === "drawing") {
       state.interaction.currentCell = point;
       finalizeShape();
+      if (
+        strokeMutated &&
+        (state.tool === "freehand" || state.tool === "eraser")
+      ) {
+        actions.commitDocumentChange();
+      }
       endInteraction(false);
       actions.render();
       return;

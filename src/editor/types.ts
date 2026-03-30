@@ -18,7 +18,7 @@ export type BorderStyle =
 export type LineStyle = "ascii" | "light" | "heavy" | "dashed" | "dotted";
 export type ArrowHeadStyle = "ascii" | "triangle";
 export type DiamondStyle = "simple" | "unicode";
-export type FreehandGlyph = "*" | "#" | "@" | "~" | "." | "x" | "o" | "█";
+export type FreehandGlyph = "*" | "#" | "@" | "~" | "." | "x" | "o" | "·";
 export type EraserSize = 1 | 3 | 5;
 export type Direction = "up" | "down" | "left" | "right";
 export type ToastTone = "info" | "success" | "error";
@@ -111,6 +111,17 @@ export interface CellMetrics {
   lineHeight: number;
 }
 
+export interface DocumentMetadata {
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DocumentSessionState {
+  metadata: DocumentMetadata;
+  isDirty: boolean;
+}
+
 export interface EditorState {
   grid: GridState;
   previewGrid: GridState | null;
@@ -124,6 +135,7 @@ export interface EditorState {
   ui: UIState;
   cellMetrics: CellMetrics;
   cursorCell: GridPoint;
+  document: DocumentSessionState;
 }
 
 export interface LineDrawResult {

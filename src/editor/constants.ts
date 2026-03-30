@@ -17,6 +17,8 @@ export const HISTORY_LIMIT = 100;
 export const MONO_FONT_SIZE = 16;
 export const MONO_LINE_HEIGHT = 1.25;
 export const STATUS_HINT = "Space+Drag to pan · Scroll to zoom";
+export const DEFAULT_DOCUMENT_NAME = "Untitled diagram";
+export const LOCAL_STORAGE_DOCUMENT_KEY = "ascii-diagram-editor.document.v1";
 
 export const TOOLS: ToolKind[] = [
   "select",
@@ -77,7 +79,7 @@ export const FREEHAND_GLYPHS: FreehandGlyph[] = [
   ".",
   "x",
   "o",
-  "█"
+  "·"
 ];
 
 export const ERASER_SIZES: EraserSize[] = [1, 3, 5];

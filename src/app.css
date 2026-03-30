@@ -111,6 +111,7 @@ select {
 }
 
 .toolbar,
+.doc-actions,
 .topbar-actions {
   display: flex;
   align-items: center;
@@ -119,6 +120,37 @@ select {
 
 .toolbar {
   flex: 1;
+  min-width: 0;
+}
+
+.document-chip {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 0 4px 0 0;
+}
+
+.document-chip-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.document-chip-name {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.doc-actions {
+  flex-wrap: wrap;
 }
 
 .tool-btn,
@@ -418,6 +450,14 @@ select {
   font-family: "JetBrains Mono Local", "JetBrains Mono", Consolas, monospace;
 }
 
+#status-dirty[data-dirty="true"] {
+  color: var(--accent);
+}
+
+#status-dirty[data-dirty="false"] {
+  color: var(--text-muted);
+}
+
 .status-spacer {
   flex: 1;
 }
@@ -499,5 +539,20 @@ select {
     flex-wrap: wrap;
     height: auto;
     padding-block: 8px;
+  }
+
+  .document-chip {
+    order: 2;
+    width: 100%;
+  }
+
+  .toolbar {
+    order: 3;
+    width: 100%;
+  }
+
+  .doc-actions,
+  .topbar-actions {
+    order: 4;
   }
 }

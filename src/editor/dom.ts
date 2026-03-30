@@ -1,4 +1,4 @@
-import { COLS, ROWS } from "./constants";
+import { COLS, DEFAULT_DOCUMENT_NAME, ROWS } from "./constants";
 
 export interface EditorDom {
   root: HTMLElement;
@@ -11,6 +11,8 @@ export interface EditorDom {
   textOverlay: HTMLDivElement;
   textArea: HTMLTextAreaElement;
   toast: HTMLDivElement;
+  importFileInput: HTMLInputElement;
+  documentName: HTMLSpanElement;
   toolButtons: HTMLButtonElement[];
   borderButtons: HTMLButtonElement[];
   lineButtons: HTMLButtonElement[];
@@ -18,6 +20,10 @@ export interface EditorDom {
   freehandButtons: HTMLButtonElement[];
   eraserButtons: HTMLButtonElement[];
   diamondButtons: HTMLButtonElement[];
+  newDocumentButton: HTMLButtonElement;
+  importButton: HTMLButtonElement;
+  exportTxtButton: HTMLButtonElement;
+  exportJsonButton: HTMLButtonElement;
   undoButton: HTMLButtonElement;
   redoButton: HTMLButtonElement;
   clearButton: HTMLButtonElement;
@@ -32,13 +38,11 @@ export interface EditorDom {
   statusCanvas: HTMLSpanElement;
   statusZoom: HTMLSpanElement;
   statusTool: HTMLSpanElement;
+  statusDirty: HTMLSpanElement;
   statusHint: HTMLSpanElement;
 }
 
-function queryRequired<T extends Element>(
-  root: ParentNode,
-  selector: string
-): T {
+function queryRequired<T extends Element>(root: ParentNode, selector: string): T {
   const element = root.querySelector<T>(selector);
   if (!element) {
     throw new Error(`Missing DOM node for selector: ${selector}`);
@@ -54,7 +58,10 @@ export function createEditorDom(root: HTMLElement): EditorDom {
           <span class="logo-mark">ASCII</span>
           <span class="logo-sub">diagram editor</span>
         </div>
-        <div class="divider"></div>
+        <div class="document-chip">
+          <span class="document-chip-label">Document</span>
+          <span class="document-chip-name" id="document-name">${DEFAULT_DOCUMENT_NAME}</span>
+        </div>
         <div class="toolbar">
           <button class="tool-btn" data-tool="select" data-tooltip="Select / Move (V)" aria-label="Select tool">
             <svg viewBox="0 0 24 24"><path d="M5 3l14 9-7 2-4 7z"></path></svg>
@@ -88,6 +95,12 @@ export function createEditorDom(root: HTMLElement): EditorDom {
             <svg viewBox="0 0 24 24"><path d="M20 20H7L3 16l10-10 8 8-4 4"></path><line x1="14" y1="6" x2="20" y2="12"></line></svg>
             <span class="shortcut-pill">E</span>
           </button>
+        </div>
+        <div class="doc-actions">
+          <button class="action-btn" id="new-document-btn" aria-label="New document">New</button>
+          <button class="action-btn" id="import-btn" aria-label="Import document">Import</button>
+          <button class="action-btn" id="export-txt-btn" aria-label="Export TXT">Export TXT</button>
+          <button class="action-btn" id="export-json-btn" aria-label="Export JSON">Export JSON</button>
         </div>
         <div class="divider"></div>
         <div class="topbar-actions">
@@ -146,7 +159,7 @@ export function createEditorDom(root: HTMLElement): EditorDom {
               <button class="chip-btn" data-char=".">.</button>
               <button class="chip-btn" data-char="x">x</button>
               <button class="chip-btn" data-char="o">o</button>
-              <button class="chip-btn" data-char="█">█</button>
+              <button class="chip-btn" data-char="·">·</button>
             </div>
           </div>
           <div class="panel-section" id="panel-eraser">
@@ -197,13 +210,15 @@ export function createEditorDom(root: HTMLElement): EditorDom {
       </div>
       <div class="statusbar">
         <div class="status-item"><span class="label">Cursor</span><span class="value" id="status-cursor">0, 0</span></div>
-        <div class="status-item"><span class="label">Canvas</span><span class="value" id="status-canvas">${COLS}×${ROWS}</span></div>
+        <div class="status-item"><span class="label">Canvas</span><span class="value" id="status-canvas">${COLS} x ${ROWS}</span></div>
         <div class="status-item"><span class="label">Zoom</span><span class="value" id="status-zoom">100%</span></div>
         <div class="status-item"><span class="label">Tool</span><span class="value" id="status-tool">Select</span></div>
+        <div class="status-item"><span class="label">State</span><span class="value" id="status-dirty">Saved</span></div>
         <div class="status-spacer"></div>
         <div class="status-item"><span class="value" id="status-hint">Space+Drag to pan · Scroll to zoom</span></div>
       </div>
     </div>
+    <input id="import-file-input" type="file" hidden />
     <div id="toast"></div>
   `;
 
@@ -220,6 +235,8 @@ export function createEditorDom(root: HTMLElement): EditorDom {
     textOverlay: queryRequired<HTMLDivElement>(root, "#text-input-overlay"),
     textArea: queryRequired<HTMLTextAreaElement>(root, "#text-input-overlay textarea"),
     toast: queryRequired<HTMLDivElement>(root, "#toast"),
+    importFileInput: queryRequired<HTMLInputElement>(root, "#import-file-input"),
+    documentName: queryRequired<HTMLSpanElement>(root, "#document-name"),
     toolButtons: Array.from(root.querySelectorAll<HTMLButtonElement>("[data-tool]")),
     borderButtons: Array.from(root.querySelectorAll<HTMLButtonElement>("[data-border]")),
     lineButtons: Array.from(root.querySelectorAll<HTMLButtonElement>("[data-linestyle]")),
@@ -227,6 +244,10 @@ export function createEditorDom(root: HTMLElement): EditorDom {
     freehandButtons: Array.from(root.querySelectorAll<HTMLButtonElement>("[data-char]")),
     eraserButtons: Array.from(root.querySelectorAll<HTMLButtonElement>("[data-erasersize]")),
     diamondButtons: Array.from(root.querySelectorAll<HTMLButtonElement>("[data-diamondstyle]")),
+    newDocumentButton: queryRequired<HTMLButtonElement>(root, "#new-document-btn"),
+    importButton: queryRequired<HTMLButtonElement>(root, "#import-btn"),
+    exportTxtButton: queryRequired<HTMLButtonElement>(root, "#export-txt-btn"),
+    exportJsonButton: queryRequired<HTMLButtonElement>(root, "#export-json-btn"),
     undoButton: queryRequired<HTMLButtonElement>(root, "#undo-btn"),
     redoButton: queryRequired<HTMLButtonElement>(root, "#redo-btn"),
     clearButton: queryRequired<HTMLButtonElement>(root, "#clear-btn"),
@@ -241,6 +262,7 @@ export function createEditorDom(root: HTMLElement): EditorDom {
     statusCanvas: queryRequired<HTMLSpanElement>(root, "#status-canvas"),
     statusZoom: queryRequired<HTMLSpanElement>(root, "#status-zoom"),
     statusTool: queryRequired<HTMLSpanElement>(root, "#status-tool"),
+    statusDirty: queryRequired<HTMLSpanElement>(root, "#status-dirty"),
     statusHint: queryRequired<HTMLSpanElement>(root, "#status-hint")
   };
 }
