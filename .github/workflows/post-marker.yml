@@ -1,0 +1,19 @@
+name: post-marker
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post marker comment
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api repos/${{ github.repository }}/issues/1/comments \
+            -f body='<!-- gh-dep-risk -->
+          workflow marker from github-actions'
